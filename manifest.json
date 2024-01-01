@@ -1,0 +1,32 @@
+{
+    "manifest_version": 3,
+    "name": "Gmail 1",
+    "description": "Fill input fields with relatable data using chatgpt",
+    "version": "1.0",
+    "action": {
+        "default_title": "Click here!",
+        "default_popup": "index.html"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://mail.google.com/"
+            ],
+            "js": [
+                "script.js"
+            ]
+        }
+    ],
+    "oauth2": {
+        "client_id": "773924219279-c0ovnfqjkilhn5ubs1mgjhev5hlm77k7.apps.googleusercontent.com",
+        "scopes": [
+            "https://www.googleapis.com/auth/gmail.readonly"
+        ]
+    },
+    "permissions": [
+        "scripting",
+        "activeTab",
+        "storage",
+        "identity"
+    ]
+}
