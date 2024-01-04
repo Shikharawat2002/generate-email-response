@@ -1,38 +1,60 @@
-document.querySelector('button').addEventListener('click', function () {
-    // Open the interactive OAuth consent screen
-    console.log("Consent screen starting");
+document.querySelector('button').addEventListener('click', async function () {
+
+    //Step1. Authentication setup to get token
     chrome.identity.getAuthToken({ interactive: true }, async function (token) {
         if (chrome.runtime.lastError || !token) {
-            // Handle errors or user rejection
             console.error(chrome.runtime.lastError);
             return;
         }
-        console.log("accessToken::", token)
-        console.log("Consent screen end");
 
-        // Call the function with the obtained token
-        await makeApiRequest(token);
-    });
-    
-    chrome.tabs.query({ active: true, currentWindow: true },async function (tabs) {
-       await chrome.scripting.executeScript({
-            target: { tabId: tabs[0].id },
-            function: getThread,
+
+
+        //Step 2. Get message ID, EmailId make api request to fetch the message data
+        chrome.tabs.query({ active: true, currentWindow: true }, async function (tabs) {
+            //reading messageID
+            const getMessageId = await chrome.scripting.executeScript({
+                target: { tabId: tabs[0].id },
+                function: getMessage,
+            });
+            const messageId = getMessageId[0]?.result;  
+            //read user email ID
+             chrome.identity.getProfileUserInfo({accountStatus: 'ANY'}, function (info) {
+                const email = info.email;
+                // Pass messageId and email to makeApiRequest
+               const messageResponse =  makeApiRequest(token, messageId, email);
+
+
+                     //Step 3. Add response 
+                     //    chrome.tabs.query({ active: true, currentWindow: true }, async function (tabs) {
+                         //     const getChatRes = await chrome.scripting.executeScript({
+                             //         target: { tabId: tabs[0].id },
+                             //         function: generateResponse,
+                             //     });
+            const getChatRes = generateResponse(messageResponse)
+            console.log("getChatRes::", getChatRes[0]?.result)
+            chrome.tabs.query({active:true, currentWindow: true}, async function (tabs){
+                chrome.scripting.executeScript({
+                    target:{tabId:tabs[0].id},
+                    function: function addResponse(getChatRes)
+                    {
+                        console.log("Response:::",getChatRes )
+                        // document.querySelector('.aO7 .editable').innerHTML = getChatRes[0].result;
+                        // console.log("Mess append")
+                        
+                    }
+                })
+               })
+            
         });
+            });
+        });
+
     });
 
-      //email id
-      chrome.identity.getProfileUserInfo(async function(info) {  email = info.email;
-        await console.log("email::", email) });
-
-});
 
 
-// document.getElementById('thread').addEventListener('click', function () {
-    
-// });
 
-async function makeApiRequest(token) {
+async function makeApiRequest(token,messageId,email) {
     // Use the obtained token and threadId to make authorized API requests
     let init = {
         method: 'GET',
@@ -44,54 +66,72 @@ async function makeApiRequest(token) {
         'contentType': 'json'
     };
 
-    // fetch(
-    //     `https://gmail.googleapis.com/gmail/v1/users/shikhatesting0@gmail.com/threads`,
-    //     init
-    // )
-    //     .then((response) => response.json())
-    //     .then(function (data) {
-    //         let userThreadData = data
-    //         // console.log("userThreadData::",userThreadData);
-    //         console.log("thread Ids::",  document.getElementById('threadIds'))
-    //         const myList = document.getElementById('threadIds');
-    //         let newArray = userThreadData.threads;
-    //         // console.log("newArray", newArray);
-    //         newArray.forEach(element => {
-    //         const listItem = document.createElement('li');
-    //         // listItem.innerHTML = `Id: ${element.id} , Snippet: ${element.snippet}`;
-    //         listItem.innerHTML = `Snippet: ${element.snippet}`;
-    //         myList.appendChild(listItem);
-    //        });
-    //     })
-    //     .catch(function (error) {
-    //         console.error('API request error:', error);
-    //     });
+
+    console.log("email::", email)
+    console.log("messageId::", messageId)
+    console.log("Token::", token)
+
+
+    fetch(`https://gmail.googleapis.com/gmail/v1/users/${email}/threads/${messageId}`,init)
+    .then(async response => await  response.json())
+    .then(data =>{
+        //get messages
+        let messagePayload=[];
+        for (let index = 0; index < data?.messages?.length; index++) 
+        {
+            // console.log("\n index", index)
+            const element = data?.messages[index]
+            // console.log("element", element)
+            const encodedString = element.payload?.parts[0]?.body?.data
+            console.log("encodedString::", encodedString)
+            messagePayload.push(encodedString);
+        }
+        console.log("messagepayload::", messagePayload)
+        const newMessagePayload = messagePayload.join(",");
+        console.log("newMessagePAyload::", newMessagePayload);
+
+        return newMessagePayload;
+    })
+    .catch(error => console.error('Error:', error));
 }
 
-async function getThread() {
-    console.log('Get thread clicked');
-    const getAllThreads =  document.querySelectorAll('.xY.a4W .bog span');
-    let thread=[];
-    let message = [];
-    getAllThreads.forEach(element=>{
-     thread.push(element.getAttribute('data-legacy-thread-id'));
-     message.push(element.getAttribute('data-legacy-last-message-id'));
-        // makeApiRequest(thread);
-    })
-    console.log("thread form js :::", thread);
-    console.log("message form js :::", message);
-    
-    // const firstThreadElement = document.querySelector('.bqe');
-    // if (firstThreadElement) {
-    //     threadId = firstThreadElement.getAttribute('data-legacy-thread-id');
-    //     messageId = firstThreadElement.getAttribute('data-legacy-last-message-id');
-    //     console.log("Thread ID: ", threadId);
-    //     console.log("Message ID: ", messageId);
 
-    //     // Now that you have the threadId, you can proceed with the API request
-    //     makeApiRequest(threadId);
-    // } else {
-    //     console.error('Thread element not found');
-    // }
+
+
+ function getMessage()
+{
+    const getMessageId = document.querySelector('.adn.ads').getAttribute('data-legacy-message-id');
+    // console.log("getMessageID in mainfunction::", getMessageId)
+    return getMessageId;
+}
+
+
+
+async function generateResponse(mailMessages)
+{
+
+    
+    const apiKey = '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';
+    const apiUrl = 'https://api.openai.com/v1/chat/completions';
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: "user", content: `You role is to decode this data and generate a email response based on this conversation:: ${mailMessages}` },
+        ],
+        model: "gpt-3.5-turbo-1106"
+      }),
+    });
+
+    const responseData = await response.json();
+    // const chatRes = JSON.parse(responseData.choices[0].message.content);
+        const chatRes = responseData?.choices[0]?.message?.content;
+    console.log("chatREs in function::",chatRes);
+    return chatRes;
 }
 
