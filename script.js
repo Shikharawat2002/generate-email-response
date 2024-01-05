@@ -44,15 +44,30 @@ document.getElementById('button').addEventListener('click', async function(){
          // Step 4: Call API To read Threads(get encoded response):
          try {
             encodedMessage = await makeApiRequest(accessToken, emailId, messageId);
-            console.log("encodedMessage to pass in generate response function:::", encodedMessage);
+            // console.log("encodedMessage to pass in generate response function:::", encodedMessage);
 
             // Step 5: Get Mail Response from chatGpt
             const getChatRes = await generateResponse(encodedMessage);
-            chatGptResponse = getChatRes[0]?.result;
+            // chatGptResponse = await getChatRes[0]?.result;
+            chatGptResponse = getChatRes;
+            console.log("chatGptResponse after function call:::", chatGptResponse);
+            if(chatGptResponse)
+            {
+                chrome.tabs.query({active:true, currentWindow: true}, async function(tabs)
+                {
+                    chrome.scripting.executeScript({
+                        target:{tabId: tabs[0].id},
+                        function: fillResponse,
+                        args:[chatGptResponse]
+                    })
+                })
+            }
+
         } catch (error) {
             console.error('Error in API request:', error);
         }
     })
+
  });
          
 
@@ -101,31 +116,47 @@ async function getMessage()
 }
 
 
-
-async function generateResponse(mailMessages)
-{
-    console.log("enocode mail inside generate REs:: ", mailMessages)
-    const apiKey = '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';
+async function generateResponse(mailMessages) {
+    console.log("enocode mail inside generate REs:: ", mailMessages);
+    const apiKey = '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';
     const apiUrl = 'https://api.openai.com/v1/chat/completions';
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: "user", content: `You role is after decoding this ${mailMessages} generate the response for mail` },
-        ],
-        model: "gpt-3.5-turbo-1106"
-      }),
-    });
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                messages: [
+                    { role: "user", content: `You role is after decoding this ${mailMessages} generate the response for mail` },
+                ],
+                model: "gpt-3.5-turbo-1106"
+            }),
+        });
 
-    const responseData = await response.json();
-    // const chatRes = JSON.parse(responseData.choices[0].message.content);
-        const chatRes = responseData?.choices[0]?.message?.content;
-    console.log("chatREs in function::",chatRes);
-    return chatRes;
+        const responseData = await response.json();
+
+        // Ensure that the response contains choices array and is not empty
+        if (responseData.choices && responseData.choices.length > 0) {
+            const chatRes = responseData.choices[0].message.content;
+            console.log("chatREs in function::", chatRes);
+            return chatRes;
+        } else {
+            console.error('Invalid response from OpenAI API');
+            throw new Error('Invalid response from OpenAI API');
+        }
+    } catch (error) {
+        console.error('Error in generateResponse:', error);
+        throw error; // Rethrow the error to propagate it through the promise chain
+    }
+}
+
+async function fillResponse(chatGptResponse)
+{
+    console.log("fillResponse:::", chatGptResponse)
+    console.log("query ",document.querySelector('.aO7 .editable') )
+    document.querySelector('.aO7 .editable').innerHTML = chatGptResponse;
 }
 
