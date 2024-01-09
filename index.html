@@ -39,11 +39,18 @@
         <h3> Welcome </h3>
         <p>Click to Generate Response</p>
     </div>
-    <div class="center">
+    <div class="center" style="display: flex; flex-direction: column;">
         <button id='auth'>Sign In</button>
-        <button id='button'>Generate Response</button>
+    </div>
+    <div class="center" style="display: flex; flex-direction: column;">
+        <button style="display: none; " id='button'>Generate Response</button>
+
+    </div>
+    <div id="loader" class="center" style="display: none;">
+        Loading...
     </div>
     <script src="script.js"></script>
+
 </body>
 
 </html>

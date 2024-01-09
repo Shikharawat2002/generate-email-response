@@ -7,6 +7,9 @@ var chatGptResponse;
 
 document.getElementById('auth').addEventListener('click', async function () {
     //Step1. Authentication setup to get token
+    document.getElementById('auth').style.display = 'none';
+    document.getElementById('button').style.display = 'block';
+
     chrome.identity.getAuthToken({ interactive: true }, async function (token) {
         if (chrome.runtime.lastError || !token) {
             console.error(chrome.runtime.lastError);
@@ -21,7 +24,8 @@ document.getElementById('auth').addEventListener('click', async function () {
 
 
 document.getElementById('button').addEventListener('click', async function(){
-    console.log("token in res::", accessToken)  
+    // console.log("token in res::", accessToken)  
+    showLoader();
 
     //Step 2: Get EmailId:
     chrome.identity.getProfileUserInfo({accountStatus: 'ANY'}, async function(info)
@@ -62,9 +66,11 @@ document.getElementById('button').addEventListener('click', async function(){
                     })
                 })
             }
-
         } catch (error) {
             console.error('Error in API request:', error);
+        }
+        finally{
+            hideLoader();
         }
     })
 
@@ -93,8 +99,16 @@ document.getElementById('button').addEventListener('click', async function(){
         let messagePayload = [];
         for (let index = 0; index < data?.messages?.length; index++) {
             const element = data?.messages[index];
-            const encodedString = element.payload?.parts[0]?.body?.data;
-            messagePayload.push(encodedString);
+            if(element.payload?.parts)
+            {
+
+                const encodedString = element.payload?.parts[0]?.body?.data;
+                messagePayload.push(encodedString);
+            }
+            else{
+                const encodedString = element.payload?.body?.data;
+                messagePayload.push(encodedString);
+            }
         }
 
         const newMessagePayload = messagePayload.join(",");
@@ -110,7 +124,9 @@ document.getElementById('button').addEventListener('click', async function(){
 
 async function getMessage()
 {
-    const getMessageId = await document.querySelector('.adn.ads').getAttribute('data-legacy-message-id');
+    // const getMessageId = await document.querySelectorAll('.adn.ads')[0].getAttribute('data-legacy-message-id');
+        const getMessageId = await document.querySelectorAll('.ha h2')[0].getAttribute('data-legacy-thread-id');
+
     // console.log("getMessageID in mainfunction::", getMessageId)
     return getMessageId;
 }
@@ -118,7 +134,7 @@ async function getMessage()
 
 async function generateResponse(mailMessages) {
     console.log("enocode mail inside generate REs:: ", mailMessages);
-    const apiKey = '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';
+    const apiKey = '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';
     const apiUrl = 'https://api.openai.com/v1/chat/completions';
 
     try {
@@ -130,7 +146,7 @@ async function generateResponse(mailMessages) {
             },
             body: JSON.stringify({
                 messages: [
-                    { role: "user", content: `You role is after decoding this ${mailMessages} generate the response for mail` },
+                    { role: "user", content: `You role is after decoding this ${mailMessages} after getting decoded mail Write a professional reply to this email behalf of me ,greet the user, generate the response  and express gratitude` },
                 ],
                 model: "gpt-3.5-turbo-1106"
             }),
@@ -156,7 +172,23 @@ async function generateResponse(mailMessages) {
 async function fillResponse(chatGptResponse)
 {
     console.log("fillResponse:::", chatGptResponse)
-    console.log("query ",document.querySelector('.aO7 .editable') )
-    document.querySelector('.aO7 .editable').innerHTML = chatGptResponse;
+    document.querySelector('.amn .bkH').click()
+    setTimeout(() => {
+        console.log("query ",document.querySelector('.aO7 .editable') )
+        document.querySelector('.aO7 .editable').innerHTML = chatGptResponse;
+      }, 1000)
+   
 }
 
+
+//function to show loader
+function showLoader() {
+    const loader = document.getElementById('loader');
+    loader.style.display = 'block';
+}
+
+// Function to hide the loader
+function hideLoader() {
+    const loader = document.getElementById('loader');
+    loader.style.display = 'none';
+}
