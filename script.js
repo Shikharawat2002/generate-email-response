@@ -7,18 +7,24 @@ var chatGptResponse;
 
 document.getElementById('auth').addEventListener('click', async function () {
     //Step1. Authentication setup to get token
-    document.getElementById('auth').style.display = 'none';
-    document.getElementById('button').style.display = 'block';
-
+   
+    
     chrome.identity.getAuthToken({ interactive: true }, async function (token) {
         if (chrome.runtime.lastError || !token) {
             console.error(chrome.runtime.lastError);
             return;
         }
         accessToken = token;
-       console.log("accessTOKen", accessToken)
+       console.log("accessToKen", accessToken)
+    if(accessToken)
+    {
+        document.getElementById('auth').style.display = 'none';
+        document.getElementById('button').style.display = 'block';
+    }
+    else{
+        alert("Invalid Sign In")
+    }
     });
-
     
 })
 
@@ -31,7 +37,7 @@ document.getElementById('button').addEventListener('click', async function(){
     chrome.identity.getProfileUserInfo({accountStatus: 'ANY'}, async function(info)
     {
         emailId= info?.email;
-        console.log("email identity:::", emailId)
+        // console.log("email identity:::", emailId)
     })
 
     //Step 3: Get messageID: 
@@ -43,35 +49,42 @@ document.getElementById('button').addEventListener('click', async function(){
         })
         // messageId = getMessageId[0]?.result;
         messageId = getMessageId[0].result;
-        console.log("messagesID chrome::", messageId);
+        // console.log("messagesID chrome::", messageId);
 
-         // Step 4: Call API To read Threads(get encoded response):
+        if(messageId){
+           // Step 4: Call API To read Threads(get encoded response): 
          try {
             encodedMessage = await makeApiRequest(accessToken, emailId, messageId);
             // console.log("encodedMessage to pass in generate response function:::", encodedMessage);
 
             // Step 5: Get Mail Response from chatGpt
-            const getChatRes = await generateResponse(encodedMessage);
-            // chatGptResponse = await getChatRes[0]?.result;
-            chatGptResponse = getChatRes;
-            console.log("chatGptResponse after function call:::", chatGptResponse);
-            if(chatGptResponse)
+            if(encodedMessage)
             {
-                chrome.tabs.query({active:true, currentWindow: true}, async function(tabs)
+                const getChatRes = await generateResponse(encodedMessage);
+                // chatGptResponse = await getChatRes[0]?.result;
+                chatGptResponse = getChatRes;
+                console.log("chatGptResponse after function call:::", chatGptResponse);
+                if(chatGptResponse)
                 {
-                    chrome.scripting.executeScript({
-                        target:{tabId: tabs[0].id},
-                        function: fillResponse,
-                        args:[chatGptResponse]
+                    chrome.tabs.query({active:true, currentWindow: true}, async function(tabs)
+                    {
+                        chrome.scripting.executeScript({
+                            target:{tabId: tabs[0].id},
+                            function: fillResponse,
+                            args:[chatGptResponse]
+                        })
                     })
-                })
+                }
             }
+         
         } catch (error) {
             console.error('Error in API request:', error);
         }
         finally{
             hideLoader();
+        }  
         }
+        
     })
 
  });
@@ -88,9 +101,9 @@ document.getElementById('button').addEventListener('click', async function(){
         'contentType': 'json'
     };
 
-    console.log("email in Api ::", emailId);
-    console.log("messageId in api ::", messageId);
-    console.log("accessTOke in APi::", accessToken);
+    // console.log("email in Api ::", emailId);
+    // console.log("messageId in api ::", messageId);
+    // console.log("accessTOke in APi::", accessToken);
 
     try {
         const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/${emailId}/threads/${messageId}`, init);
@@ -112,12 +125,12 @@ document.getElementById('button').addEventListener('click', async function(){
         }
 
         const newMessagePayload = messagePayload.join(",");
-        console.log("newMessagePayload::", newMessagePayload);
+        // console.log("newMessagePayload::", newMessagePayload);
 
         return newMessagePayload;
     } catch (error) {
         console.error('Error in makeApiRequest:', error);
-        throw error; // Rethrow the error to propagate it through the promise chain
+        throw error; 
     }
 }
 
@@ -133,8 +146,8 @@ async function getMessage()
 
 
 async function generateResponse(mailMessages) {
-    console.log("enocode mail inside generate REs:: ", mailMessages);
-    const apiKey = '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';
+    console.log("enocoded mail inside generate Res:: ", mailMessages);
+    const apiKey = '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';
     const apiUrl = 'https://api.openai.com/v1/chat/completions';
 
     try {
@@ -146,7 +159,7 @@ async function generateResponse(mailMessages) {
             },
             body: JSON.stringify({
                 messages: [
-                    { role: "user", content: `You role is after decoding this ${mailMessages} after getting decoded mail Write a professional reply to this email behalf of me ,greet the user, generate the response  and express gratitude` },
+                    { role: "user", content: `Your role is decoding this mail: ${mailMessages} and after getting decoded mail , return only Generated reply,greet the user  and express gratitude` },
                 ],
                 model: "gpt-3.5-turbo-1106"
             }),
@@ -157,7 +170,7 @@ async function generateResponse(mailMessages) {
         // Ensure that the response contains choices array and is not empty
         if (responseData.choices && responseData.choices.length > 0) {
             const chatRes = responseData.choices[0].message.content;
-            console.log("chatREs in function::", chatRes);
+            // console.log("chatREs in function::", chatRes);
             return chatRes;
         } else {
             console.error('Invalid response from OpenAI API');

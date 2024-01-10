@@ -17,6 +17,9 @@
             ]
         }
     ],
+    "icons": {
+        "128": "gIcon.png"
+    },
     "oauth2": {
         "client_id": "773924219279-c0ovnfqjkilhn5ubs1mgjhev5hlm77k7.apps.googleusercontent.com",
         "scopes": [
